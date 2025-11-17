@@ -1,0 +1,13 @@
+{
+    "game_directory": ".",
+    "auth_uuid": "00000000-0000-0000-0000-000000000000",
+    "auth_access_token": "null",
+    "clientid": "null",
+    "auth_xuid": "00000000-0000-0000-0000-000000000000",
+    "user_type": "msa",
+    "launcher_name": "JAR",
+    "launcher_version": "1.0.0",
+    "auth_player_name": "$username",
+    "version_type": "release",
+    "natives_directory": "natives"
+}
