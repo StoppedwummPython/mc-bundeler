@@ -9,6 +9,7 @@ import shutil
 import os
 from uuid import getnode as get_mac
 import datetime
+import timeit
 
 parser = argparse.ArgumentParser("MC-Bundeler")
 
@@ -17,6 +18,7 @@ make_dir(".build")
 MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 
 def main(namespace: argparse.Namespace):
+    start = timeit.default_timer()
     global vm
     manifest_result = get(MANIFEST)
     vm = {}
@@ -106,6 +108,8 @@ def main(namespace: argparse.Namespace):
         f.write(f"MAC Address: {hashlib.sha256(str(mac_address).encode()).hexdigest()}" + "\n")
         f.write(f"OS: {_current_os_name}" + "\n")
         f.write(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + "\n")
+    end = timeit.default_timer()
+    print(f"Finished in {end - start} seconds")
     
                 
     
