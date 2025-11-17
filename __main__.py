@@ -84,9 +84,10 @@ def main(namespace: argparse.Namespace):
             with open("dist/windows.bat", "w") as wf:
                 wf.write(of.read().replace("{{LAUNCHER_ARGS}}", arg_string).replace("{{JVM_ARGS}}", jvm_args_string))
     elif _current_os_name == "darwin":
-        with open("artifacts/macos.sh", "r") as of:
-            with open("dist/macos.sh", "w") as wf:
+        with open("artifacts/macos", "r") as of:
+            with open("dist/macos", "w") as wf:
                 wf.write(of.read().replace("{{LAUNCHER_ARGS}}", arg_string).replace("{{JVM_ARGS}}", jvm_args_string))
+                os.system("chmod +x dist/macos")
     with open("dist/build_info.txt", "w") as f:
         f.write(f"Version: {namespace.version}" + "\n")
         f.write(f"JVM Args: {jvm_args_string}" + "\n")
