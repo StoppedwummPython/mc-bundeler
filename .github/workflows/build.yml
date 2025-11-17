@@ -1,25 +1,22 @@
-# Name of the GitHub Actions workflow.
+# .github/workflows/build.yml
+
 name: Build and Release
 
-# Controls when the workflow will run.
 on:
   push:
+    # This runs the 'build' job for every push to main to validate the code
     branches: [ "main" ]
-    # Run the 'release' job only when a tag is pushed (e.g., v1.0, v1.2.3)
+    # This runs BOTH jobs when a tag matching 'v*.*.*' is pushed
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ "main" ]
 
-# A workflow run is made up of one or more jobs.
 jobs:
-  # The build job remains mostly the same.
   build:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Use more descriptive names for clarity in the release step
         os: [windows-latest, macos-latest]
-    
-    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Check out repository code
@@ -38,53 +35,41 @@ jobs:
       - name: Run the bundler script
         run: python __main__.py
 
-      # Use runner.os to name the artifact correctly
+      # This name is critical. It must match the 'download-artifact' name.
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ runner.os }}
           path: dist/
 
-  # This job will download the artifacts and create a GitHub Release
   release:
-    # This job only runs if the 'build' job has completed successfully
+    # This job requires the 'build' job to succeed
     needs: build
-    # This job will only run when a tag is pushed
+    # This job ONLY runs if the event that triggered the workflow was a tag push
     if: startsWith(github.ref, 'refs/tags/')
-    
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        
-      # Download the Windows artifact. The name MUST match the upload name.
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: dist-Windows  # Correct name
+          name: dist-Windows # MUST match the uploaded artifact name
           path: dist-Windows
 
-      # Download the macOS artifact
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         with:
-          name: dist-macOS # Correct name
+          name: dist-macOS # MUST match the uploaded artifact name
           path: dist-macOS
           
-      # Create ZIP files for the release
-      - name: Archive release files
+      - name: Archive release files into ZIPs
         run: |
           zip -r dist-Windows.zip ./dist-Windows
           zip -r dist-macOS.zip ./dist-macOS
           
-      # This action creates the release and uploads the ZIP files
-      - name: Create GitHub Release
+      - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          # The body of the release. You can customize this.
-          body: "Automated release of the MC-Bundler."
-          # Find the ZIP files to attach to the release
           files: |
             dist-Windows.zip
             dist-macOS.zip
