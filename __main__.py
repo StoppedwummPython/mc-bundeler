@@ -110,6 +110,7 @@ def main(namespace: argparse.Namespace):
         f.write(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + "\n")
     end = timeit.default_timer()
     print(f"Finished in {end - start} seconds")
+    # test
     
                 
     
