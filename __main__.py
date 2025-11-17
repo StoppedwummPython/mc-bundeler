@@ -7,7 +7,8 @@ from lib.readParse import *
 from lib.mergeJars import *
 import shutil
 import os
-import sys
+from uuid import getnode as get_mac
+import datetime
 
 parser = argparse.ArgumentParser("MC-Bundeler")
 
@@ -44,6 +45,8 @@ def main(namespace: argparse.Namespace):
             path: str = lib["downloads"]["artifact"]["path"].replace("/", "_")
             download_and_verify(url, ".build/downloads/" + path, lib["downloads"]["artifact"]["sha1"])
     merge_into_jar(".build/client.jar", libs)
+    if os.path.exists("dist"):
+        shutil.rmtree("dist")
     make_dir("dist")
     shutil.copyfile(".build/client.jar", "dist/client.jar")
     arg_string = ""
@@ -84,6 +87,24 @@ def main(namespace: argparse.Namespace):
         with open("artifacts/macos.sh", "r") as of:
             with open("dist/macos.sh", "w") as wf:
                 wf.write(of.read().replace("{{LAUNCHER_ARGS}}", arg_string).replace("{{JVM_ARGS}}", jvm_args_string))
+    with open("dist/build_info.txt", "w") as f:
+        f.write(f"Version: {namespace.version}" + "\n")
+        f.write(f"JVM Args: {jvm_args_string}" + "\n")
+        f.write(f"Launcher Args: {arg_string}" + "\n")
+        # calculate sha1 hash
+        sha1_hash = hashlib.sha1()
+        with open(".build/client.jar", 'rb') as hf:
+            # Read the file in chunks to handle large files efficiently
+            while chunk := hf.read(4096):
+                sha1_hash.update(chunk)
+
+        calculated_sha1 = sha1_hash.hexdigest()
+        f.write(f"SHA1: {calculated_sha1}" + "\n")
+        # generate hash by mac adress
+        mac_address = get_mac()
+        f.write(f"MAC Address: {hashlib.sha256(str(mac_address).encode()).hexdigest()}" + "\n")
+        f.write(f"OS: {_current_os_name}" + "\n")
+        f.write(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + "\n")
     
                 
     
