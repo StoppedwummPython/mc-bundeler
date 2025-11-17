@@ -1,114 +1,90 @@
 # Name of the GitHub Actions workflow.
-name: Build and Update Release
+name: Build and Release
 
 # Controls when the workflow will run.
-# This workflow runs when a release is published.
 on:
-  release:
-    types: [published]
+  push:
+    branches: [ "main" ]
+    # Run the 'release' job only when a tag is pushed (e.g., v1.0, v1.2.3)
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ "main" ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel.
+# A workflow run is made up of one or more jobs.
 jobs:
-  # This job is named 'build'.
+  # The build job remains mostly the same.
   build:
-    # This specifies that the job will run on different operating systems using a matrix strategy.
     strategy:
       matrix:
-        os: [windows-latest, macos-latest] # Defines the OSes to run on.
-
-    # The type of runner that the job will run on, taken from the matrix.
+        # Use more descriptive names for clarity in the release step
+        os: [windows-latest, macos-latest]
+    
     runs-on: ${{ matrix.os }}
 
-    # Steps represent a sequence of tasks that will be executed as part of the job.
     steps:
-      # Step 1: Check out your repository under $GITHUB_WORKSPACE, so your job can access it.
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      # Step 2: Set up the specified version of Python on the runner.
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          # You can change the Python version if needed.
           python-version: '3.9'
 
-      # Step 3: Install dependencies from requirements.txt.
-      # This step ensures that all required libraries are available before running the script.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Step 4: Run the main Python script to build the project.
-      # This executes the __main__.py file which bundles the application.
       - name: Run the bundler script
         run: python __main__.py
 
-      # Step 5: Upload the generated 'dist' directory as a build artifact.
-      # The artifact will be named based on the runner's operating system (e.g., dist-Windows, dist-macOS).
+      # Use runner.os to name the artifact correctly
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          # The name of the artifact to be uploaded.
           name: dist-${{ runner.os }}
-          # The path to the directory to upload.
           path: dist/
 
-  # This job uploads the build artifacts to the existing release.
-  update-release:
-    # This job runs on the latest version of Ubuntu.
-    runs-on: ubuntu-latest
-    # This job depends on the successful completion of the 'build' job.
+  # This job will download the artifacts and create a GitHub Release
+  release:
+    # This job only runs if the 'build' job has completed successfully
     needs: build
+    # This job will only run when a tag is pushed
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    runs-on: ubuntu-latest
 
-    # Steps to be executed in the 'update-release' job.
     steps:
-      # Step 1: Download the Windows build artifact.
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        
+      # Download the Windows artifact. The name MUST match the upload name.
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: dist-windows-latest
-          path: dist-windows
+          name: dist-Windows  # Correct name
+          path: dist-Windows
 
-      # Step 2: Download the macOS build artifact.
+      # Download the macOS artifact
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         with:
-          name: dist-macos-latest
-          path: dist-macos
-
-      # Step 3: Upload the Windows artifact to the release.
-      # This will overwrite the file if it already exists.
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: dist-macOS # Correct name
+          path: dist-macOS
+          
+      # Create ZIP files for the release
+      - name: Archive release files
+        run: |
+          zip -r dist-Windows.zip ./dist-Windows
+          zip -r dist-macOS.zip ./dist-macOS
+          
+      # This action creates the release and uploads the ZIP files
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          # The URL for uploading assets, taken from the release that triggered the workflow.
-          upload_url: ${{ github.event.release.upload_url }}
-          # The path to the asset to upload.
-          # IMPORTANT: Change 'your-application-name.exe' to the actual name of your executable.
-          asset_path: ./dist-windows/your-application-name.exe
-          # The name of the asset in the release.
-          # IMPORTANT: Change this to your desired asset name.
-          asset_name: your-application-name-windows.exe
-          # The content type of the asset.
-          asset_content_type: application/octet-stream
-
-      # Step 4: Upload the macOS artifact to the release.
-      # This will also overwrite the file if it already exists.
-      - name: Upload macOS Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # The URL for uploading assets, taken from the release that triggered the workflow.
-          upload_url: ${{ github.event.release.upload_url }}
-          # The path to the asset to upload.
-          # IMPORTANT: Change 'your-application-name' to the actual name of your application.
-          asset_path: ./dist-macos/your-application-name
-          # The name of the asset in the release.
-          # IMPORTANT: Change this to your desired asset name.
-          asset_name: your-application-name-macos
-          # The content type of the asset.
-          asset_content_type: application/octet-stream```
+          # The body of the release. You can customize this.
+          body: "Automated release of the MC-Bundler."
+          # Find the ZIP files to attach to the release
+          files: |
+            dist-Windows.zip
+            dist-macOS.zip
